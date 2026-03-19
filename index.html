@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pembuat Struk Premium</title>
+<style>
+body{font-family:monospace;background:#f5f5f5;margin:0;padding:20px}
+.container{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:10px}
+button{padding:8px 14px;margin:4px;border:none;border-radius:6px;background:#222;color:#fff;cursor:pointer}
+input,select{padding:6px;margin:4px;width:100%}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border-bottom:1px dashed #999;padding:6px;text-align:left}
+.nav{margin-bottom:10px}
+.hidden{display:none}
+.section-title{font-weight:bold;margin-top:15px}
+.receipt-box{border:1px dashed #999;padding:10px;margin-top:10px;background:#fafafa}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="nav">
+<button onclick="showPage('receiptPage')">Struk Maker</button>
+<button onclick="showPage('listPage')">List Maker</button>
+</div>
+
+<!-- ================= STRUK MAKER ================= -->
+<div id="receiptPage">
+<h2>Pembuat Struk Premium</h2>
+
+<div>
+<label>Nama Toko</label>
+<input id="storeName">
+
+<label>Tanggal</label>
+<input type="date" id="date">
+</div>
+
+<div class="section-title">Input Barang</div>
+
+<table id="itemsTable">
+<thead>
+<tr>
+<th>Nama</th>
+<th>Qty</th>
+<th>Harga</th>
+<th></th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<button onclick="addItem()">Tambah Item</button>
+
+<div>
+<label>Uang Dibawa (Tunai)</label>
+<input id="cash" type="number">
+</div>
+
+<button onclick="generateReceipt()">Generate Preview</button>
+<button onclick="saveReceipt()">Simpan Struk</button>
+
+<div class="receipt-box" id="receiptPreview"></div>
+
+<h3>Struk Tersimpan</h3>
+<div id="savedReceipts"></div>
+</div>
+
+<!-- ================= LIST MAKER ================= -->
+<div id="listPage" class="hidden">
+<h2>List Maker</h2>
+
+<div class="section-title">Input Barang List</div>
+
+<table id="listTable">
+<thead>
+<tr>
+<th>Nama Barang</th>
+<th>Jumlah</th>
+<th>Satuan</th>
+<th></th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<button onclick="addListItem()">Tambah Item</button>
+
+<button onclick="generateList()">Generate List</button>
+
+<div class="receipt-box" id="listPreview"></div>
+
+</div>
+
+</div>
+
+<script>
+
+function showPage(page){
+ document.getElementById('receiptPage').classList.add('hidden')
+ document.getElementById('listPage').classList.add('hidden')
+ document.getElementById(page).classList.remove('hidden')
+}
+
+// ================= STRUK =================
+
+function addItem(name='',qty='',price=''){
+ const row=document.createElement('tr')
+ row.innerHTML=`
+ <td><input value="${name}"></td>
+ <td><input type="number" value="${qty}"></td>
+ <td><input type="number" value="${price}"></td>
+ <td><button onclick="this.parentElement.parentElement.remove()">x</button></td>
+ `
+ document.querySelector('#itemsTable tbody').appendChild(row)
+}
+
+function generateReceipt(){
+ const rows=[...document.querySelectorAll('#itemsTable tbody tr')]
+ let total=0
+ let totalItem=0
+
+ let html=`<b>${storeName.value}</b><br>${date.value}<br><hr>`
+
+ rows.forEach(r=>{
+  const name=r.children[0].children[0].value
+  const qty=parseInt(r.children[1].children[0].value)||0
+  const price=parseInt(r.children[2].children[0].value)||0
+
+  const sub=qty*price
+  total+=sub
+  totalItem+=qty
+
+  html+=`${name} (${qty}) - Rp${sub.toLocaleString('id-ID')}<br>`
+ })
+
+ const cashVal=parseInt(cash.value)||0
+ const change=cashVal-total
+
+ html+=`<hr>`
+ html+=`Total Item : ${totalItem}<br>`
+ html+=`Total Belanja : Rp${total.toLocaleString('id-ID')}<br>`
+ html+=`Tunai : Rp${cashVal.toLocaleString('id-ID')}<br>`
+ html+=`Sisa : Rp${change.toLocaleString('id-ID')}<br>`
+
+ receiptPreview.innerHTML=html
+}
+
+function saveReceipt(){
+ const data={
+ store:storeName.value,
+ date:date.value,
+ html:receiptPreview.innerHTML
+ }
+
+ let receipts=JSON.parse(localStorage.getItem('receipts')||'[]')
+ receipts.push(data)
+ localStorage.setItem('receipts',JSON.stringify(receipts))
+
+ loadReceipts()
+}
+
+function loadReceipts(){
+ const receipts=JSON.parse(localStorage.getItem('receipts')||'[]')
+ savedReceipts.innerHTML=''
+
+ receipts.forEach((r,i)=>{
+  const div=document.createElement('div')
+  div.innerHTML=`
+  <b>${r.store}</b> - ${r.date}
+  <button onclick="openReceipt(${i})">Buka</button>
+  <button onclick="deleteReceipt(${i})">Hapus</button>
+  `
+  savedReceipts.appendChild(div)
+ })
+}
+
+function openReceipt(i){
+ const receipts=JSON.parse(localStorage.getItem('receipts'))
+ receiptPreview.innerHTML=receipts[i].html
+}
+
+function deleteReceipt(i){
+ let receipts=JSON.parse(localStorage.getItem('receipts'))
+ receipts.splice(i,1)
+ localStorage.setItem('receipts',JSON.stringify(receipts))
+ loadReceipts()
+}
+
+// ================= LIST =================
+
+function addListItem(name='',qty='',unit=''){
+ const row=document.createElement('tr')
+ row.innerHTML=`
+ <td><input value="${name}"></td>
+ <td><input type="number" value="${qty}"></td>
+ <td>
+  <select>
+   <option ${unit==='Buah'?'selected':''}>Buah</option>
+   <option ${unit==='Kg'?'selected':''}>Kg</option>
+   <option ${unit==='Liter'?'selected':''}>Liter</option>
+   <option ${unit==='Pack'?'selected':''}>Pack</option>
+  </select>
+ </td>
+ <td><button onclick="this.parentElement.parentElement.remove()">x</button></td>
+ `
+ document.querySelector('#listTable tbody').appendChild(row)
+}
+
+function generateList(){
+ const rows=[...document.querySelectorAll('#listTable tbody tr')]
+ let total=0
+
+ let html=`<b>DAFTAR BARANG</b><br><hr>`
+
+ rows.forEach((r,i)=>{
+  const name=r.children[0].children[0].value
+  const qty=parseInt(r.children[1].children[0].value)||0
+  const unit=r.children[2].children[0].value
+
+  total+=qty
+
+  html+=`${i+1}. ${name} - ${qty} ${unit}<br>`
+ })
+
+ html+=`<hr>Total Item : ${total}`
+
+ listPreview.innerHTML=html
+}
+
+loadReceipts()
+
+</script>
+
+</body>
+</html>
